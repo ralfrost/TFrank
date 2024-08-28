@@ -2,7 +2,7 @@
 
 import argparse
 import csv
-import datetime
+from datetime import date
 import pickle
 import sys
 import os
@@ -104,17 +104,18 @@ def write_data(data):
         pickle.dump(data, data_file)
 
 
-def write_history(match, date=None):
+def write_history(match, match_date=None):
     match_player_ids = match.match_player_ids
     zero_game_wt = match.zero_game_wt
     zero_game_lt = match.zero_game_lt
-    if date is None:
-        date = datetime.date.today().isoformat()
+    if match_date is None:
+        match_date = date.today().isoformat()
 
     with open(HISTORY_FILE, 'a', newline='') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow([match_player_ids[0], match_player_ids[1], match_player_ids[2], match_player_ids[3], zero_game_wt, zero_game_lt, date])
+        writer.writerow([match_player_ids[0], match_player_ids[1], match_player_ids[2], match_player_ids[3], zero_game_wt, zero_game_lt, match_date])
     
+
 banner = '''
  
     /^\                                     
@@ -126,7 +127,7 @@ banner = '''
     |_|   | |  | |  | | | (_| | | | |   <    
     |^|   |_|  |_|  |_|  \__,_|_| |_|_|\_\   
     |||      _                               
-   [_X_]    (_)         by El Ruedi v1.1.4 
+   [_X_]    (_)         by El Ruedi v1.1.6
 '''
 
 if __name__ == '__main__':
@@ -140,19 +141,26 @@ if __name__ == '__main__':
                         help = 'Add new player')
     parser.add_argument('-b',
                         '--batch_add',
-                        metavar='PLAYERS.csv',
+                        metavar = 'PLAYERS.csv',
                         help = 'Add batch of new players from .csv file')
     parser.add_argument('-c',
                         '--change_alias',
-                        metavar='PLAYER_ID',
+                        metavar = 'PLAYER_ID',
                         help = 'Change player alias')
-    parser.add_argument('-d',
-                        '--delete',
+    parser.add_argument('--delete',
                         metavar='PLAYER_ID',
                         help = 'Delete player')
+    parser.add_argument('-d',
+                        '--deactivate',
+                        metavar='PLAYER_ID',
+                        help = 'Flag player als inactive')
+    parser.add_argument('-e',
+                        '--eternal',
+                        action = 'store_true',
+                        help = 'Show eternal ranking table')
     parser.add_argument('-i',
                         '--history',
-                        metavar='HISTORY.csv',
+                        metavar = 'HISTORY.csv',
                         help = 'Import match history from .csv file.')
     parser.add_argument('-l',
                         '--list',
@@ -164,7 +172,7 @@ if __name__ == '__main__':
                         help = 'Add new match results.')
     parser.add_argument('-p',
                         '--player',
-                        metavar='PLAYER_ID',
+                        metavar = 'PLAYER_ID',
                         help = 'Get rank of player by player id.')
     parser.add_argument('-r',
                         '--rank',
@@ -223,6 +231,31 @@ if __name__ == '__main__':
         write_data(data)
         exit()    
 
+    if args.deactivate:
+        player_id = args.deactivate
+        data = load_data()
+        player = data.get_player(player_id)
+        if player is None:
+            print(f'{player_id} is not registered, check for correct spelling.')
+        else: 
+            if confirm(f'Do you really want to deactivate player {player_id} alias {player.alias}?'):
+                player.active = False
+            else:
+                exit()
+        write_data(data)
+        exit()    
+
+    if args.rank:
+        data = load_data()
+        print('heytest')
+        data.print_ranking(eternal=False)
+        exit()
+
+    if args.eternal:
+        data = load_data()
+        data.print_ranking(eternal=True)
+        exit()
+
     if args.list:
         data = load_data()
         data.list_players()
@@ -250,7 +283,7 @@ if __name__ == '__main__':
 
     if args.rank:
         data = load_data()
-        data.print_ranking()
+        data.print_ranking(eternal=False)
         exit()
 
     if args.history is not None:
@@ -264,11 +297,11 @@ if __name__ == '__main__':
                     match_player_ids = row[0:4]
                     zero_game_wt = (row[4] == 'True')
                     zero_game_lt = (row[5] == 'True')
-                    date = row[6]
+                    match_date = row[6]
                     match = Match(match_player_ids, zero_game_wt, zero_game_lt)
-                    print(f'Importing match: {match_player_ids}, {zero_game_wt}, {zero_game_lt}, {date}')
-                    data.add_match(match)
-                    write_history(match, date)
+                    print(f'Importing match: {match_player_ids}, {zero_game_wt}, {zero_game_lt}, {match_date}')
+                    data.add_match(match, match_date=date.fromisoformat(match_date))
+                    write_history(match, match_date)
                 line_count = line_count + 1
         write_data(data)
         # except: 
