@@ -1,6 +1,9 @@
+from datetime import date
+
 
 RANK_MIN = 3
 NEW_PLAYER_STATUS_LIMIT = 8
+MAX_POINTS = 30
 
 def mean(list) -> float:
     return sum(list)/len(list)
@@ -26,6 +29,8 @@ class _Player:
         # self.game_stats = {'avg_diff': {}, 'win':{}, 'loss':{}, 'zero_win': {}, 'zero_loss': {}}
         self.ranked_games = 0
         self.unranked = True
+        self.active = True
+        self.last_played_date = date(1989,11,9)
         self.placement_matches = []
 
     def __str__(self):
@@ -107,19 +112,23 @@ class _Player:
             self.rank = max(min(mean(rdiffs), 700), 300)
 
 
-    def update_rank(self, team_diff, win, zero_game_wt, zero_game_lt) -> None:
+    def update_rank(self, team_winchance, win, zero_game_wt, zero_game_lt) -> None:
         # Should prevent players' rank exceeding 0 or 1000. Apply only if for increasing rank when rank greater than 500 or for decreasing when already lower then 500        
         if (win and self.rank > 500) or (not win and self.rank < 500):
-            damp = (1 - (1/499.9*(self.rank - 500))**4)
+            damp = (1 - (1/499.9*(self.rank - 500))**6)
         else:
             damp = 1
         
         # rank should only change significantly if winning team's rank is not more than 50 greater than losing team's rank
-        if team_diff > 54:
-            k = 54/(team_diff+6)
-        if team_diff <= 54:
-            k = 1
-
+        if self.ranked_games < NEW_PLAYER_STATUS_LIMIT:
+            j = 2*MAX_POINTS
+        else: 
+            j = MAX_POINTS
+            
+        if win:
+            k = j*(1-team_winchance)
+        else:
+            k = -j*team_winchance
         # double rank changes if losing team lost with zero goals
         c=1
         if zero_game_wt:
@@ -127,20 +136,10 @@ class _Player:
         if zero_game_lt:
             c=0.5*c
         
-        if self.ranked_games < NEW_PLAYER_STATUS_LIMIT:
-            base_points = 36
-        else: 
-            base_points = 18
-
-        update_points = c*damp*k*base_points
-        # print(f'c: {c},k: {k}, damp: {damp}, base: {base_points}')
+        update_points = c*damp*k
         
-        if win:
-            self.rank = self.rank + update_points
-            print(f'{self.alias}: {round(self.rank)}(+{round(update_points)})')
-        else: 
-            self.rank = self.rank - update_points
-            print(f'{self.alias}: {round(self.rank)}(-{round(update_points)})')
+        self.rank = self.rank + update_points
+        print(f'{self.alias}: {round(self.rank)}(+{round(update_points)})')
 
         
 class RankData:
@@ -166,18 +165,21 @@ class RankData:
     
     def list_players(self) -> None:
         player_sort=sorted(self.players, key=lambda player: player.id, reverse=False)
-        print(f'{"ID" : <5}{"Alias" : <16}{"Status" : <8}')
+        print(f'{"ID" : <5}{"Alias" : <16}{"Status" : <9}{"Last played" : <11}')
         for player in player_sort:
             if player.unranked:
-                print(f'{player.id : <5}{player.alias : <16}unranked')
+                print(f'{player.id : <5}{player.alias : <16}{"unranked" : <9}{player.last_played_date.isoformat(): <11}')
             else:
-                print(f'{player.id : <5}{player.alias : <16}')
+                print(f'{player.id : <5}{player.alias : <16}{"ranked" : <9}{player.last_played_date.isoformat(): <11}')
 
 
-    def print_ranking(self) -> None:
+    def print_ranking(self, eternal) -> None:
         player_sort=sorted(self.players, key=lambda player: player.rank, reverse=True)
         # Only ranked players appear in ranking
         player_red=[player for player in player_sort if not player.unranked]
+        
+        if not eternal:
+            player_red=[player for player in player_red if player.active and ((date.today() - player.last_played_date).days < 180)]
 
         print(f'{"Ranking" : <20}{"Points" : ^8}{"Win/Loss" : ^11}{"Z_Win/Z_Loss" : ^13}{"WR" : <5}')
         
@@ -220,10 +222,14 @@ class RankData:
         return players
 
 
-    def add_match(self, match, new=True) -> bool:
+    def add_match(self, match, match_date=date.today(), new=True) -> bool:
         
         # Get player objects
         match_players = self._get_players(match.match_player_ids)
+
+        for player in match_players:
+            player.last_played_date = match_date
+
         
         # Check for unranked players
         unranked_players = self._unranked_players(match_players)
@@ -255,7 +261,7 @@ class RankData:
                 for unrankable_match in self.unrankable_matches:
                     self.unrankable_matches.remove(unrankable_match)
                     print(f'Trying to rank match: {unrankable_match.match_player_ids}')
-                    self.add_match(unrankable_match, False)
+                    self.add_match(unrankable_match, new=False)
                 return True
                 
 
@@ -296,16 +302,32 @@ class RankData:
             match_player[0].zero_loss += 1
             match_player[1].zero_loss += 1        
 
-    def _rank_match(self, match_player, zero_game_wt, zero_game_lt) -> None:
-        # Update player ranks
-        team1_rank = match_player[0].rank+match_player[1].rank
-        team2_rank = match_player[2].rank+match_player[3].rank
-        
-        team_diff = team1_rank - team2_rank # team_diff is winning_team_rank - losing_team_rank
-        # self._update_ranked_match_stats(self, match_player, zero_game_wt, zero_game_lt, team_diff)
-        # print(f'Result: {match_player[0]}. {match_player[1]}, {match_player[2]}, {match_player[3]}')
+    def _team_rank(self, player1_rank, player2_rank) -> int:
+        player_rank = [player1_rank, player2_rank]
+        k = [0,0]
         for i in [0,1]:
-            match_player[i].update_rank(team_diff, True, zero_game_wt, zero_game_lt)
+            if player_rank[i] < 500:
+                k[i]=1
+            else:
+                k[i] = 1+3*((player_rank[i]-500)/500)**7
+
+        #team_rank = round(2*(k[0]*player_rank[0]+k[1]*player_rank[1])/(k[0]+k[1]))
+        team_rank = (player_rank[0]+player_rank[1])
+        return team_rank
+
+    def _rank_match(self, match_player, zero_game_wt, zero_game_lt) -> None:
+        # Calculate team_rank values and team_diff
+        team1_rank = self._team_rank(match_player[0].rank, match_player[1].rank)
+        team2_rank = self._team_rank(match_player[2].rank, match_player[3].rank)
+        
+        team1_winchance = 1/(1+10**((team2_rank - team1_rank)/350)) 
+        team2_winchance = 1/(1+10**((team1_rank - team2_rank)/350))
+        # print(f'Result: {match_player[0]}. {match_player[1]}, {match_player[2]}, {match_player[3]}')
+        # print(f'Ranks: {match_player[0].rank}. {match_player[1].rank}, {match_player[2].rank}, {match_player[3].rank}')
+        
+        # Calculate new ranks
+        for i in [0,1]:
+            match_player[i].update_rank(team1_winchance, True, zero_game_wt, zero_game_lt)
             match_player[i].ranked_games += 1
             # for j in [2,3]:
             #     try:
@@ -322,6 +344,6 @@ class RankData:
                 # print(f'{match_player[i].id}>{match_player[j].id} {self.game_stats[match_player[i].id][match_player[j].id]}')
         
         for i in [2,3]:
-            match_player[i].update_rank(team_diff, False, zero_game_wt, zero_game_lt)
+            match_player[i].update_rank(team2_winchance, False, zero_game_wt, zero_game_lt)
             match_player[i].ranked_games += 1
         
