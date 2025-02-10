@@ -117,7 +117,6 @@ def write_history(match, match_date=None):
     
 
 banner = r'''
- 
     /^\                                     
     \_/                                     
    / V \______________               _      
@@ -287,8 +286,9 @@ if __name__ == '__main__':
         data = load_data()
         with open(args.history, 'r', newline='') as csv_file:
             reader = csv.reader(csv_file)
-
+            
             for row in reader:
+                
                 if row[6] != 'date': 
                     match_player_ids = row[0:4]
                     zero_game_wt = (row[4] == 'True')
@@ -297,7 +297,9 @@ if __name__ == '__main__':
                     match = Match(match_player_ids, zero_game_wt, zero_game_lt)
                     print(f'Importing match: {match_player_ids}, {zero_game_wt}, {zero_game_lt}, {match_date}')
                     data.add_match(match, match_date=date.fromisoformat(match_date))
-                    write_history(match, match_date)
+                    # if results are loaded from the default HISTORY_File don't write results again in that file
+                    if args.history != HISTORY_FILE:
+                        write_history(match, match_date)
         write_data(data)
         # except: 
             # print('Couldn\'t find history. Make sure \'results.csv\' exists in base directory.')
