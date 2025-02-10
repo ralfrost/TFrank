@@ -25,8 +25,10 @@ class _Player:
         self.loss = 0
         self.zero_win = 0
         self.zero_loss = 0
+        self.win_streak = 0
+        self.max_win_streak = 0
+        self.loose_streak = 0
         self.games = 0
-        # self.game_stats = {'avg_diff': {}, 'win':{}, 'loss':{}, 'zero_win': {}, 'zero_loss': {}}
         self.ranked_games = 0
         self.unranked = True
         self.active = True
@@ -184,7 +186,7 @@ class RankData:
         if not eternal:
             player_red=[player for player in player_red if player.active and ((date.today() - player.last_played_date).days < 180)]
 
-        print(f'{"Ranking" : <20}{"Points" : ^8}{"Win/Loss" : ^11}{"Z_Win/Z_Loss" : ^13}{"WR" : <5}')
+        print(f'{"Ranking" : <20}{"Points" : ^8}{"Win/Loss" : ^11}{"Z_Win/Z_Loss" : ^13}{"Streak/Max_Win" : ^15}{"WR" : <5}')
         
         for i in range(len(player_red)):
             if i == 0:
@@ -198,8 +200,15 @@ class RankData:
                     wr = 'droelf' #float('inf')
             else:
                 wr = round(player_red[i].win/player_red[i].loss, 2)
-
-            print(f'{rank :>2}. {player_red[i].alias :<16}{round(player_red[i].rank) :^8}{player_red[i].win :>4}/{player_red[i].loss: <7}{player_red[i].zero_win :>4}/{player_red[i].zero_loss :<7}{wr :<5}')
+            if player_red[i].win_streak > 0:
+                streak_type = 'win'
+                streak = player_red[i].win_streak
+                streak_string = streak_type+':'+str(streak)
+            else:
+                streak_type = 'loose'
+                streak = player_red[i].loose_streak
+                streak_string = streak_type+':'+str(streak)
+            print(f'{rank :>2}. {player_red[i].alias :<16}{round(player_red[i].rank) :^8}{player_red[i].win :>4}/{player_red[i].loss: <7}{player_red[i].zero_win :>4}/{player_red[i].zero_loss :<6}{streak_string:>7}/{player_red[i].max_win_streak:<8}{wr :<5}')
 
 
     def _unranked_players(self, players) -> int:
@@ -275,8 +284,14 @@ class RankData:
             match_player[i].games += 1
             if i in [0,1]:
                 match_player[i].win += 1
+                match_player[i].loose_streak = 0
+                match_player[i].win_streak += 1
+                if match_player[i].win_streak > match_player[i].max_win_streak:
+                    match_player[i].max_win_streak = match_player[i].win_streak
             if i in [2,3]:
                 match_player[i].loss += 1
+                match_player[i].loose_streak += 1
+                match_player[i].win_streak = 0
         if zero_game_wt:
             match_player[0].zero_win += 1
             match_player[1].zero_win += 1
@@ -293,8 +308,14 @@ class RankData:
             match_player[i].games += 1
             if i in [0,1]:
                 match_player[i].win += 1
+                match_player[i].loose_streak = 0
+                match_player[i].win_streak += 1
+                if match_player[i].win_streak > match_player[i].max_win_streak:
+                    match_player[i].max_win_streak = match_player[i].win_streak
             if i in [2,3]:
                 match_player[i].loss += 1
+                match_player[i].loose_streak += 1
+                match_player[i].win_streak = 0
         if zero_game_wt:
             match_player[0].zero_win += 1
             match_player[1].zero_win += 1
