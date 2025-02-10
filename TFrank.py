@@ -260,7 +260,7 @@ if __name__ == '__main__':
     if args.match:
         data = load_data()
         match_data = prompt_match_info(data)
-        match = Match(match_data[0],match_data[1],match_data[2])
+        match = New_Match(match_data[0],match_data[1],match_data[2])
         if data.add_match(match):
             write_history(match)
             write_data(data)
@@ -288,13 +288,13 @@ if __name__ == '__main__':
             reader = csv.reader(csv_file)
             
             for row in reader:
-                
+
                 if row[6] != 'date': 
                     match_player_ids = row[0:4]
                     zero_game_wt = (row[4] == 'True')
                     zero_game_lt = (row[5] == 'True')
                     match_date = row[6]
-                    match = Match(match_player_ids, zero_game_wt, zero_game_lt)
+                    match = New_Match(match_player_ids, zero_game_wt, zero_game_lt)
                     print(f'Importing match: {match_player_ids}, {zero_game_wt}, {zero_game_lt}, {match_date}')
                     data.add_match(match, match_date=date.fromisoformat(match_date))
                     # if results are loaded from the default HISTORY_File don't write results again in that file

@@ -8,7 +8,7 @@ MAX_POINTS = 30
 def mean(list) -> float:
     return sum(list)/len(list)
 
-class Match:
+class New_Match:
 
     def __init__(self, match_player_ids, zero_game_wt, zero_game_lt) -> None:
         self.match_player_ids = match_player_ids
@@ -139,7 +139,10 @@ class _Player:
         update_points = c*damp*k
         
         self.rank = self.rank + update_points
-        print(f'{self.alias}: {round(self.rank)}(+{round(update_points)})')
+        if update_points >0:
+            print(f'{self.alias}: {round(self.rank)}(+{round(update_points)})')
+        else: 
+            print(f'{self.alias}: {round(self.rank)}({round(update_points)})')
 
         
 class RankData:
@@ -229,6 +232,7 @@ class RankData:
 
         for player in match_players:
             player.last_played_date = match_date
+            player.active = True
 
         
         # Check for unranked players
