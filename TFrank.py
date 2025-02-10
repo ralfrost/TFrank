@@ -116,7 +116,7 @@ def write_history(match, match_date=None):
         writer.writerow([match_player_ids[0], match_player_ids[1], match_player_ids[2], match_player_ids[3], zero_game_wt, zero_game_lt, match_date])
     
 
-banner = '''
+banner = r'''
  
     /^\                                     
     \_/                                     
@@ -127,7 +127,7 @@ banner = '''
     |_|   | |  | |  | | | (_| | | | |   <    
     |^|   |_|  |_|  |_|  \__,_|_| |_|_|\_\   
     |||      _                               
-   [_X_]    (_)         by El Ruedi v1.1.6
+   [_X_]    (_)         by El Ruedi v1.2.0
 '''
 
 if __name__ == '__main__':
@@ -196,12 +196,10 @@ if __name__ == '__main__':
         with open(args.batch_add, 'r', newline='') as csv_file:
             reader = csv.reader(csv_file)
 
-            line_count = 0
             for [player_id, alias] in reader:
-                if line_count != 0: 
+                if player_id != "ID": 
                     data.add_player(player_id, alias)
                     print(f'Added player {player_id} aka {alias}.')
-                line_count = line_count + 1
         write_data(data)
 
 
@@ -247,7 +245,6 @@ if __name__ == '__main__':
 
     if args.rank:
         data = load_data()
-        print('heytest')
         data.print_ranking(eternal=False)
         exit()
 
