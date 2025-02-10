@@ -197,7 +197,7 @@ if __name__ == '__main__':
             reader = csv.reader(csv_file)
 
             for [player_id, alias] in reader:
-                if player_id != "ID": 
+                if player_id != 'ID': 
                     data.add_player(player_id, alias)
                     print(f'Added player {player_id} aka {alias}.')
         write_data(data)
@@ -288,9 +288,8 @@ if __name__ == '__main__':
         with open(args.history, 'r', newline='') as csv_file:
             reader = csv.reader(csv_file)
 
-            line_count = 0
             for row in reader:
-                if line_count != 0: 
+                if row[6] != 'date': 
                     match_player_ids = row[0:4]
                     zero_game_wt = (row[4] == 'True')
                     zero_game_lt = (row[5] == 'True')
@@ -299,7 +298,6 @@ if __name__ == '__main__':
                     print(f'Importing match: {match_player_ids}, {zero_game_wt}, {zero_game_lt}, {match_date}')
                     data.add_match(match, match_date=date.fromisoformat(match_date))
                     write_history(match, match_date)
-                line_count = line_count + 1
         write_data(data)
         # except: 
             # print('Couldn\'t find history. Make sure \'results.csv\' exists in base directory.')
