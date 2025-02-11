@@ -25,10 +25,10 @@ if __name__ == '__main__':
         if player_id == 'all':
             for player in data.players:
                 player.rank = ranking_value
-                player.get_player(player_id).unranked = False
+                player.unranked = False
         else:
-            data.get_player(player_id).rank = ranking_value
-            data.get_player(player_id).unranked = False
+            data.rank = ranking_value
+            data.unranked = False
 
     with open('data.pickle', 'wb') as data_file:
                 pickle.dump(data, data_file)
